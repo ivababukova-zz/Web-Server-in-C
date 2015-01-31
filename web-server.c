@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <sys/wait.h>
-
+#include <unistd.h>
 
 #define MAXLEN 1024 // maximum length of the buffer
 #define MY_PORT 8080 // the port I am using
@@ -20,11 +20,11 @@
 // 1. retrieve pointer to the name of the file requested:
 
 
-int main(int argc, char *argv[]) {
+int main() {
 
     struct sockaddr_in addr;
     struct sockaddr_in cliaddr;
-    int sock, listens, connsocket;
+    int sock, clientsock, listens, connsocket;
     socklen_t cliaddrlen;
     char buff[MAXLEN];
 
@@ -57,20 +57,16 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    while(1) {
     // read():
-    while (1) {
-        int clientfd;
-    
-        clientfd = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
+        // accepts the connection, returns new file descriptor for the connection and cliaddr
+        clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
         printf ("connected\n");
-
-        send(clientfd, buff, recv(clientfd, buff, MAXLEN, 0), 0);
-
-        close(clientfd);
+        send(clientsock, buff, recv(clientsock, buff, MAXLEN, 0), 0);
+        close(clientsock);
     }
-
     close(sock);
-    return 0;
+    return (0);
 }
 
     // server should read and parse the request: retrieve the name of the file requested
