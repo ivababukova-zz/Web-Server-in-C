@@ -93,29 +93,30 @@ int main() {
         clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
         printf ("connected\n");
         int byte_count = recv(clientsock, buff, MAXLEN, 0);
-        send(clientsock, buff, byte_count, 0);
+        //send(clientsock, buff, byte_count, 0);
         filerequest = parser (p);
         printf ("result from parsing: %s\n", filerequest);
         int c;
-        fp = fopen(filerequest, "r");
-        if (fp == NULL) {
-            printf("error while opening file.\n");
-        }
         
 
         while (1) {
-            unsigned char data[256] = {0};
+            unsigned char data[MAXLEN] = {0};
             int newlen;
+            fp = fopen(filerequest, "r");
+
+            if (fp == NULL) {
+                printf("error while opening file.\n");
+            }
             if (fp) {
-                newlen = fread (data, sizeof(char), 256, fp);
-                data[++newlen] = '\0';   
+                newlen = fread (data, sizeof(char), MAXLEN, fp);
+                data[newlen + 1] = '\0';   
                 fclose(fp);
             }
             printf("Sending...\n");
             write (clientsock, data, newlen);
-            int i = 0;
-            close(clientsock);
+            break;
             }
+        close(clientsock);
         }
 
     close(sock);
