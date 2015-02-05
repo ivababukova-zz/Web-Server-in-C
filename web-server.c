@@ -11,14 +11,34 @@
 #include <unistd.h>
 
 #define MAXLEN 1024 // maximum length of the buffer
-#define MY_PORT 8080 // the port I am using
+#define MY_PORT 5000 // the port I am using
 #define MAXFILENAME 30 // the max lenght of the name of the file requested
 
 // don't put everything in main!
 // functions that parse the request:
 
-// 1. retrieve pointer to the name of the file requested:
+// function that returns the response appropriate to the browser
+/*
+char * respondToClient (int index) {
+    char *p;
+    char *response = NULL;
+    if (index == -1) {
+        response[MAXFILENAME] = "200 OK";
+    }
+    else if (index == 0) {
+        response[MAXFILENAME] = "404 File Not Found";
+    }
+    else if (index == -2) {
+        response[MAXFILENAME] = "400 Bad Request";
+    }
+    else if (index == -3) {
+        response[MAXFILENAME] = "500 Internal Server Error";
+    }
 
+    p = response;
+    return p;
+}
+*/
 
 // returns the file requested by the browser: 
 char * parser (char *buff) {
@@ -91,33 +111,33 @@ int main() {
     // read():
         // accepts the connection, returns new file descriptor for the connection and cliaddr
         clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
-        printf ("connected\n");
-        int byte_count = recv(clientsock, buff, MAXLEN, 0);
-        //send(clientsock, buff, byte_count, 0);
+        printf ("Connected\n");
+        int byte_count = recv(clientsock, buff, MAXLEN, 0);     
         filerequest = parser (p);
         printf ("result from parsing: %s\n", filerequest);
         int c;
         
 
-        while (1) {
-            unsigned char data[MAXLEN] = {0};
-            int newlen;
-            fp = fopen(filerequest, "r");
-
-            if (fp == NULL) {
-                printf("error while opening file.\n");
-            }
-            if (fp) {
-                newlen = fread (data, sizeof(char), MAXLEN, fp);
-                data[newlen + 1] = '\0';   
-                fclose(fp);
-            }
+        unsigned char data[MAXLEN] = {0};
+        int newlen;
+        fp = fopen(filerequest, "r");
+        if (fp != NULL) {
+            newlen = fread (data, sizeof(char), MAXLEN, fp);
+            data[newlen + 1] = '\0';   
+            fclose(fp);
             printf("Sending...\n");
-            write (clientsock, data, newlen);
-            break;
-            }
-        close(clientsock);
         }
+
+        else {
+            printf("error while opening file.\n");
+        }
+
+        write (clientsock, data, newlen);
+	printf("writen the data\n");
+        break;
+    }
+        close(clientsock);
+
 
     close(sock);
     return (0);
