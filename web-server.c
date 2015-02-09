@@ -17,8 +17,14 @@
 // don't put everything in main!
 // functions that parse the request:
 
-// function that returns the response appropriate to the browser
-char * responseGenerator (int i) {
+/*  
+returns either of these depeding on the index value: 
+    HTTP/1.1 404 Not Found
+    HTTP/1.1 200 OK
+    HTTP/1.1 400 Bad Request
+    HTTP/1.1 500 Internal Server Error
+*/
+char * responseGenerator (int i, char *buff) {
 
     char *p;
  
@@ -49,29 +55,47 @@ char * responseGenerator (int i) {
 
 // returns the file requested by the browser: 
 char * request_parser (char *buff) {
+
+    /* process the request: */
     char *token = NULL;
     char *filename, *http;
     char get[15];
 
     filename = (char *)malloc(30);
     http = (char *)malloc(10);
+    token = strtok(buff, "\r\n"); /* get the first token: */
+/*
+    while (token != NULL) {
+        printf ("token: %s\n", token);
+        token = strtok (NULL, "\r\n");
+    }
+*/
 
-    token = strtok(buff, "\r");
-    printf("token: %s\n", token);
     while (token) {
         sscanf (token, "%s %s %s", get, filename, http);
+        printf ("the first token: %s\n", get);
+
         if ( (strlen(get) == 3) && (get[0] == 'G') && (get[1] == 'E') && (get[2] == 'T') ) {
             strcpy (filename, &filename[1]);
+            printf ("filename found here: %s\n", filename);
             break;
         }
+
+/*
+        if ( (strlen(get) == 5) && (get[0] == 'H') && (get[1] == 'o') ){
+            printf ("found the host line of the request: %s\n", token);
+            break;
+            // call responseGenerator function to generate response
+        }
+*/
         else {
-            token = strtok(NULL, "\n");
+            token = strtok (NULL, "\r\n");
         }
     }
     printf("filename to be returned by parser function: %s\n", filename);
+    free(http);
     return filename;
 }
-
 
 int main() {
 
@@ -112,22 +136,34 @@ int main() {
     // read():
         // accepts the connection, returns new file descriptor for the connection and cliaddr
         clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
-        printf ("Connected\n");
-        int byte_count = recv(clientsock, buff, MAXLEN, 0);     
+        if (clientsock == -1) {
+            printf ("error: connection refused\n");
+        }
+        else {
+            printf ("Connected\n");
+        }
+
+        if ( (recv(clientsock, buff, MAXLEN, 0)) == -1) {
+            printf ("error: connection wasn't received\n");
+        }   
+  
         filerequest = request_parser (p);
         printf ("result from parsing: %s\n", filerequest);
         if (p == NULL) {
             printf ("internal server error\n");
         }
+ 
         int c;
-        
-
-        unsigned char data[MAXLEN] = {0};
+        unsigned char data[MAXLEN], data2[MAXLEN];
         int newlen;
+
+        /* TODO: write in the data buffer the response: */        
+        strcat (data, "HTTP/1.1 200 OK \r\n");       
         fp = fopen(filerequest, "r");
         if (fp != NULL) {
-            newlen = fread (data, sizeof(char), MAXLEN, fp);
-            data[newlen + 1] = '\0';   
+            newlen = fread (data2, sizeof(char), MAXLEN, fp);
+            data2[newlen + 1] = '\0';  
+            strcat (data, data2); 
             fclose(fp);
             printf("Sending...\n");
         }
