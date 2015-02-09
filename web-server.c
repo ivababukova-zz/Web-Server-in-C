@@ -134,6 +134,10 @@ int main() {
 
     while(1) {
     // read():
+        int c;
+        unsigned char data[MAXLEN], data2[MAXLEN];
+        int newlen;
+
         // accepts the connection, returns new file descriptor for the connection and cliaddr
         clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
         if (clientsock == -1) {
@@ -149,29 +153,33 @@ int main() {
   
         filerequest = request_parser (p);
         printf ("result from parsing: %s\n", filerequest);
-        if (p == NULL) {
-            printf ("internal server error\n");
-        }
- 
-        int c;
-        unsigned char data[MAXLEN], data2[MAXLEN];
-        int newlen;
 
-        /* TODO: write in the data buffer the response: */        
-        strcat (data, "HTTP/1.1 200 OK \r\n");       
-        fp = fopen(filerequest, "r");
-        if (fp != NULL) {
+        if (filerequest == NULL) {
+            printf ("internal server error\n");
+            fp = fopen ("404index.html", "r");
+        } 
+        else {
+            /* TODO: write in the data buffer the response: */        
+            strcat (data, "HTTP/1.1 200 OK \r\n");        
+            fp = fopen(filerequest, "r");
+        }
+        if (fp == NULL) {
+            printf("error while opening file.\n");
+            strcpy (data, "HTTP/1.1 404 Not Found \r\n");
+            fp = fopen ("404index.html", "r");
+            newlen = fread (data2, sizeof(char), MAXLEN, fp);
+            data2[newlen + 1] = '\0';
+            strcat (data, data2);   
+            printf("Sending...\n");
+             
+        }
+        else if (fp != NULL) {
             newlen = fread (data2, sizeof(char), MAXLEN, fp);
             data2[newlen + 1] = '\0';  
             strcat (data, data2); 
-            fclose(fp);
             printf("Sending...\n");
         }
-
-        else {
-            printf("error while opening file.\n");
-        }
-
+        fclose (fp);
         write (clientsock, data, newlen);
         //p = responseGenerator (2);
         //printf ("the response is: %s\n", p );
