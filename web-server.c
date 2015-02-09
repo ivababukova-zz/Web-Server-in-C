@@ -18,57 +18,58 @@
 // functions that parse the request:
 
 // function that returns the response appropriate to the browser
-/*
-char * respondToClient (int index) {
+char * responseGenerator (int i) {
+
     char *p;
-    char *response = NULL;
-    if (index == -1) {
-        response[MAXFILENAME] = "200 OK";
-    }
-    else if (index == 0) {
-        response[MAXFILENAME] = "404 File Not Found";
-    }
-    else if (index == -2) {
-        response[MAXFILENAME] = "400 Bad Request";
-    }
-    else if (index == -3) {
-        response[MAXFILENAME] = "500 Internal Server Error";
+ 
+
+    if (i == -1) {
+        static char response[MAXFILENAME] = "404 Not Found\0";
+        p = response;
     }
 
-    p = response;
+    if (i == 0) {
+        static char response[MAXFILENAME] = "200 OK\0";
+        p = response;
+    }
+    // if the server doesn't understand the request:
+    if (i == 1) {
+        static char response[MAXFILENAME] = "400 Bad Request\0";
+        p = response;
+    }
+    // the server fails for a reason:
+    if (i == 2) {
+        static char response[MAXFILENAME] = "500 Internal Server Error\0";
+        p = response;
+    }
+    
+    printf ("the response is: %s\n", p );
     return p;
 }
-*/
 
 // returns the file requested by the browser: 
-char * parser (char *buff) {
+char * request_parser (char *buff) {
     char *token = NULL;
-    static char filename[MAXFILENAME];
-    char *p;
-    int i, j;
+    char *filename, *http;
+    char get[15];
 
-    token = strtok(buff, "\n");
+    filename = (char *)malloc(30);
+    http = (char *)malloc(10);
 
+    token = strtok(buff, "\r");
+    printf("token: %s\n", token);
     while (token) {
-        if ( token[0] == 'G' && (2)<strlen(token)) {
-            if (token[1] == 'E' && token[2] == 'T') { 
-                i = 5;
-                j = 0;
-                while (token[i] != ' ') {
-                    filename[j] = token[i];
-                    j++;
-                    i++;
-                }
-                filename[j] = '\0';
-                break;
-            }
+        sscanf (token, "%s %s %s", get, filename, http);
+        if ( (strlen(get) == 3) && (get[0] == 'G') && (get[1] == 'E') && (get[2] == 'T') ) {
+            strcpy (filename, &filename[1]);
+            break;
         }
-        token = strtok(NULL, "\n");
+        else {
+            token = strtok(NULL, "\n");
+        }
     }
-
-    p = filename;
-    // check whether the filename is correctly parsed: 
-    return p;
+    printf("filename to be returned by parser function: %s\n", filename);
+    return filename;
 }
 
 
@@ -113,8 +114,11 @@ int main() {
         clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen);
         printf ("Connected\n");
         int byte_count = recv(clientsock, buff, MAXLEN, 0);     
-        filerequest = parser (p);
+        filerequest = request_parser (p);
         printf ("result from parsing: %s\n", filerequest);
+        if (p == NULL) {
+            printf ("internal server error\n");
+        }
         int c;
         
 
@@ -133,7 +137,9 @@ int main() {
         }
 
         write (clientsock, data, newlen);
-	printf("writen the data\n");
+        //p = responseGenerator (2);
+        //printf ("the response is: %s\n", p );
+	    printf("writen the data\n");
         break;
     }
         close(clientsock);
