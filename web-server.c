@@ -17,6 +17,28 @@
 // don't put everything in main!
 // functions that parse the request:
 
+char *find_content_type (char *filename) {
+    char *p;
+    int i;
+    char buf1[MAXFILENAME];
+    char buf2[MAXFILENAME];
+    
+    strcpy(buf1, filename);
+    printf("name of file requested: %s \n", buf1);
+
+    for (i = 0; i<strlen(buf1); i++) {
+        if ( buf1[i] == '.' ) {
+            strcpy(buf2, &buf1[i]);
+            printf ("namerih tochka %s\n", buf2);
+        }
+    }
+    if ( strcmp(buf2, ".html") == 0 ) {
+        printf ("i am awesome!\n");
+    }
+    p = buf2;
+    return p;
+}
+
 /*  
 returns either of these depeding on the index value: 
     HTTP/1.1 404 Not Found
@@ -24,33 +46,36 @@ returns either of these depeding on the index value:
     HTTP/1.1 400 Bad Request
     HTTP/1.1 500 Internal Server Error
 */
-// this function is not used ATM
 char * responseGenerator (char *filename) {
 
-    char *p;
+    char *p, *content_type;
     FILE *fp;
     char data[MAXLEN], data2[MAXLEN];
     int newlen;
+
+    if (filename == NULL) {
+        strcpy (data, "HTTP/1.1 400 Bad Request\r\nContent-type: text/html\r\nConnection: close\r\n\n");
+        fp = fopen ("400index.html", "r");
+    }
+
     fp = fopen (filename, "r");
+    content_type = find_content_type (filename);
+    printf ("content type: %s\n", content_type);
 
     if (fp == NULL) {
-            strcpy (data, "HTTP/1.1 404 Not Found \r\n");
-            fp = fopen ("404index.html", "r");
-            newlen = fread (data2, sizeof(char), MAXLEN, fp);
-            data2[newlen + 1] = '\0';
-            strcat (data, data2);   
-            p = data;
-            fclose(fp);
+        strcpy (data, "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\nConnection: close\r\n\n");
+        fp = fopen ("404index.html", "r");
     }
 
     else if (fp != NULL) {
-            strcpy (data, "HTTP/1.1 200 OK \r\n");
-            newlen = fread (data2, sizeof(char), MAXLEN, fp);
-            data2[newlen + 1] = '\0';
-            strcat (data, data2);   
-            p = data;
-            fclose(fp);
+        strcpy (data, "HTTP/1.1 200 OK\r\n");
     }
+
+    newlen = fread (data2, sizeof(char), MAXLEN, fp);
+    data2[newlen + 1] = '\0';
+    strcat (data, data2);   
+    p = data;
+    fclose(fp);
     return p;
 }
 
@@ -154,19 +179,19 @@ int main() {
   
         filerequest = request_parser (p);
         printf ("result from parsing: %s\n", filerequest);
-
-        char *p;
-        p = responseGenerator(filerequest);
-        strcpy (data, p);
+        
+        char *p1;
+        p1 = responseGenerator(filerequest);
+        strcpy (data, p1);
         newlen = strlen(data);
 
-// check what is going to be sent:
+        // check what is going to be sent:
         int i;
         for (i = 0; i<newlen; i++) {
             printf ("%c", data[i]);
         }
 
-        write (clientsock, p, newlen);
+        write (clientsock, p1, newlen);
         printf("Sending1...\n");
         break;
     }
@@ -176,16 +201,5 @@ int main() {
     close(sock);
     return (0);
 }
-
-    // server should read and parse the request: retrieve the name of the file requested
-
-// the server shoud check the value of the Host: HTTP header sent by the client to ensure it matches the current hostname -- gethostname()
-
-// the host: header IS NOT in a fixed location
-
-// the server should respond with appropriate HTTP headers, followed by the data, close the connection -- write (bqlqblqblqbq)
-
-// test with simple file index.html
-// the url given to the browser depends on the host being used
 
 
