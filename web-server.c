@@ -24,32 +24,33 @@ returns either of these depeding on the index value:
     HTTP/1.1 400 Bad Request
     HTTP/1.1 500 Internal Server Error
 */
-char * responseGenerator (int i, char *buff) {
+// this function is not used ATM
+char * responseGenerator (char *filename) {
 
     char *p;
- 
+    FILE *fp;
+    char data[MAXLEN], data2[MAXLEN];
+    int newlen;
+    fp = fopen (filename, "r");
 
-    if (i == -1) {
-        static char response[MAXFILENAME] = "404 Not Found\0";
-        p = response;
+    if (fp == NULL) {
+            strcpy (data, "HTTP/1.1 404 Not Found \r\n");
+            fp = fopen ("404index.html", "r");
+            newlen = fread (data2, sizeof(char), MAXLEN, fp);
+            data2[newlen + 1] = '\0';
+            strcat (data, data2);   
+            p = data;
+            fclose(fp);
     }
 
-    if (i == 0) {
-        static char response[MAXFILENAME] = "200 OK\0";
-        p = response;
+    else if (fp != NULL) {
+            strcpy (data, "HTTP/1.1 200 OK \r\n");
+            newlen = fread (data2, sizeof(char), MAXLEN, fp);
+            data2[newlen + 1] = '\0';
+            strcat (data, data2);   
+            p = data;
+            fclose(fp);
     }
-    // if the server doesn't understand the request:
-    if (i == 1) {
-        static char response[MAXFILENAME] = "400 Bad Request\0";
-        p = response;
-    }
-    // the server fails for a reason:
-    if (i == 2) {
-        static char response[MAXFILENAME] = "500 Internal Server Error\0";
-        p = response;
-    }
-    
-    printf ("the response is: %s\n", p );
     return p;
 }
 
@@ -154,36 +155,19 @@ int main() {
         filerequest = request_parser (p);
         printf ("result from parsing: %s\n", filerequest);
 
-        if (filerequest == NULL) {
-            printf ("internal server error\n");
-            fp = fopen ("404index.html", "r");
-        } 
-        else {
-            /* TODO: write in the data buffer the response: */        
-            strcat (data, "HTTP/1.1 200 OK \r\n");        
-            fp = fopen(filerequest, "r");
+        char *p;
+        p = responseGenerator(filerequest);
+        strcpy (data, p);
+        newlen = strlen(data);
+
+// check what is going to be sent:
+        int i;
+        for (i = 0; i<newlen; i++) {
+            printf ("%c", data[i]);
         }
-        if (fp == NULL) {
-            printf("error while opening file.\n");
-            strcpy (data, "HTTP/1.1 404 Not Found \r\n");
-            fp = fopen ("404index.html", "r");
-            newlen = fread (data2, sizeof(char), MAXLEN, fp);
-            data2[newlen + 1] = '\0';
-            strcat (data, data2);   
-            printf("Sending...\n");
-             
-        }
-        else if (fp != NULL) {
-            newlen = fread (data2, sizeof(char), MAXLEN, fp);
-            data2[newlen + 1] = '\0';  
-            strcat (data, data2); 
-            printf("Sending...\n");
-        }
-        fclose (fp);
-        write (clientsock, data, newlen);
-        //p = responseGenerator (2);
-        //printf ("the response is: %s\n", p );
-	    printf("writen the data\n");
+
+        write (clientsock, p, newlen);
+        printf("Sending1...\n");
         break;
     }
         close(clientsock);
