@@ -115,18 +115,26 @@ char * responseGenerator (char *filename) {
 // returns the file requested by the browser: 
 char * request_parser (char *buff) {
 
-    /* process the request: */
-    char *token = NULL;
     char *filename, *http;
+    char *token = NULL;
     char get[15];
     int isGETFound = 0; // used a boolean, to check whether there was a GET header or not
-    int isHostFound = 0;
+    char hostname[40];
 
     filename = (char *)malloc(30);
+
+    // TODO: check the hostname.dcs.gla.ac.uk as well
+    /* first check the hostname, because if it is wrong then we don't need to do any more calculations */
+    if (gethostname (hostname, sizeof hostname) == 0) {
+        printf ("+++++++%s++++++++\n", hostname);
+    }
+    else {
+        filename = "404";
+        return filename;
+    }
+
     http = (char *)malloc(10);
     token = strtok(buff, "\r\n"); /* get the first token: */
-
-
 
     while (token) {
         sscanf (token, "%s %s %s", get, filename, http);
@@ -138,13 +146,6 @@ char * request_parser (char *buff) {
             isGETFound = 1;
             break;
         }
-/*
-        if ( (strlen(get) == 5) && (get[0] == 'H') && (get[1] == 'o') ){
-            printf ("found the host line of the request: %s\n", token);
-            break;
-            // call responseGenerator function to generate response
-        }
-*/
         else {
             token = strtok (NULL, "\r\n");
         }
@@ -211,7 +212,7 @@ int main() {
         if ( (recv(clientsock, buff, MAXLEN, 0)) == -1) {
             printf ("error: connection wasn't received\n");
         }   
-        printf ("\n**********************************\n");
+        printf ("\n****************print the request:******************\n");
         int j = 0;
         while (buff[j] != '\0') {
             printf ("%c", buff[j]);
