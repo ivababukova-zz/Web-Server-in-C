@@ -83,13 +83,17 @@ char * response_generator (char *filename) {
     int fd;
     off_t size;
     char filesize[6]; 
+    char data [MAXLEN], data2[MAXLEN - 100], data3 [MAXLEN - 200];
 
     if ( ((fd = open (filename, O_RDONLY)) < -1) || (fstat(fd, &filestat) < 0) ) {
-        perror ("Error in measuring the size of the file");
+        printf ("Error in measuring the size of the file");
+        char data [MAXLEN], data2[MAXLEN - 100], data3 [MAXLEN - 200];
     }
-    char data[filestat.st_size + 150], data2[filestat.st_size + 40], data3[filestat.st_size];
+    else {
+        char data[filestat.st_size + 150], data2[filestat.st_size + 40], data3[filestat.st_size];
+    }
 
-    if (filename == NULL || strcmp (filename,"404") == 0) {
+    if (filename == NULL || strcmp (filename,"404") == 0 || filestat.st_size == 0 ) {
         // I have measured the length of my 400.html file
         strcpy (data, "HTTP/1.1 400 Bad Request\r\nContent-Length: 327\r\nContent-Type: text/html\r\n");
         fp = fopen ("400index.html", "r");
@@ -97,7 +101,6 @@ char * response_generator (char *filename) {
 
 
     printf ("***************size of file: %d\n", filestat.st_size);
-    close (fd);
 
     sprintf (filesize, "%d", filestat.st_size); // put the file size of buffer, so we can add it to the response header
 
@@ -238,11 +241,12 @@ int main() {
         }
 */
         write (clientsock, response_p, newlen);
+        close (clientsock);
         printf("Sending1...\n");
     }
 
-    close(clientsock);
-    close(sock);
+    close (clientsock);
+    close (sock);
     return 0;
 }
 
