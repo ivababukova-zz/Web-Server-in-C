@@ -13,9 +13,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define MAXLEN 2024 // maximum length of the buffer
+#define MAXLEN 200000
 #define MY_PORT 5000 // the port I am using
 #define MAXFILENAME 30 // the max lenght of the name of the file requested
+
 
 
 /* find the content type of the file requested */
@@ -61,19 +62,9 @@ char *find_content_type (char *filename) {
     //return "Content-type: image/jpeg\r\n";
     return p;
 }
-/*
-int content_len (char *filename) {
 
 
-//    printf("Information for %s\n",filename);
-//    printf("---------------------------\n");
-//    printf("File Size: \t\t%d bytes\n",filestat.st_size);
-//    printf("Number of Links: \t%d\n",filestat.st_nlink);
-//    printf("File inode: \t\t%d\n",filestat.st_ino);
 
-    return filestat.st_size;
-}
-*/
 /*  
 formates the response 
 either of these depeding on the index value: 
@@ -82,17 +73,21 @@ either of these depeding on the index value:
     HTTP/1.1 400 Bad Request + content type + connection + 400 file made by me
     HTTP/1.1 500 Internal Server Error + content type + connection + 500 file made by me
 */
-char * responseGenerator (char *filename) {
+char * response_generator (char *filename) {
 
     char *p; // pointer to the whole response
     char *content_type; // pointer to the content type
-    FILE *fp;
-    char data[MAXLEN], data2[1000];
     /* vars needed for finding the length of the file */
     struct stat filestat;
+    FILE *fp;
     int fd;
     off_t size;
     char filesize[6]; 
+
+    if ( ((fd = open (filename, O_RDONLY)) < -1) || (fstat(fd, &filestat) < 0) ) {
+        perror ("Error in measuring the size of the file");
+    }
+    char data[filestat.st_size + 150], data2[filestat.st_size + 40], data3[filestat.st_size];
 
     if (filename == NULL || strcmp (filename,"404") == 0) {
         // I have measured the length of my 400.html file
@@ -101,20 +96,12 @@ char * responseGenerator (char *filename) {
     }
 
 
-    if ( ((fd = open (filename, O_RDONLY)) < -1) || (fstat(fd, &filestat) < 0) ) {
-        size = -1;
-        printf ("size of the file is -1!!!\n");
-    }
-    size = filestat.st_size;
-    printf ("***************size of file: %d\n", size);
+    printf ("***************size of file: %d\n", filestat.st_size);
     close (fd);
 
-    sprintf (filesize, "%d", size); // put the file size of buffer, so we can add it to the response header
+    sprintf (filesize, "%d", filestat.st_size); // put the file size of buffer, so we can add it to the response header
 
     fp = fopen (filename, "r");
-    content_type = find_content_type (filename);
-    printf ("in responseGenerator: content type: %s\n\n", content_type);
-
     if (fp == NULL) {
         // I have measured the length of my 404.html file
         strcpy (data, "HTTP/1.1 404 Not Found\r\nContent-Length: 165\r\nContent-Type: text/html\r\n");
@@ -127,7 +114,8 @@ char * responseGenerator (char *filename) {
         strcat (data, filesize);
         strcat (data, "\r\n");
         /* content-type: */
-        strcpy (data2, content_type);
+        strcpy (data2, find_content_type (filename));
+        printf ("content-type: %s\n", find_content_type (filename));
 	    strcat (data, data2);
     }
 
@@ -136,79 +124,66 @@ char * responseGenerator (char *filename) {
         strcpy (data, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 190\r\nContent-Type: text/html\r\n");
         fp = fopen ("500index.html", "r");
     }
+        
 
     strcat (data, "Connection: keep-alive\r\n\n");
 
     /* read the file in a data buffer: */
-    fread (data2, sizeof(char), MAXLEN, fp);
-    strcat (data, data2);   
+    fread (data3, sizeof(char), filestat.st_size + 150, fp);
+    strcat (data, data3);   // seg fault here
+    printf ("hello\n");
     data[strlen(data)] = '\0';
-/*
-    int i = 0;
-    while (data[i] != '\0') {
-        printf ("%c", data[i]);
-        i++;
-    } 
-*/
+
+
     p = data;
     fclose(fp);
     return p;
 }
 
-// returns the file requested by the browser: 
+
+
+/* returns the name of the file requested by the browser: */
 char * request_parser (char *buff) {
 
-    char *filename, *http;
+    char *filename;
     char *token = NULL;
-    char get[15];
-    int isGETFound = 0; // used a boolean, to check whether there was a GET header or not
+    char get[15], http[10];
     char hostname[40];
 
     filename = (char *)malloc(30);
 
     // TODO: check the hostname.dcs.gla.ac.uk as well
     /* first check the hostname, because if it is wrong then we don't need to do any more calculations */
-    if (gethostname (hostname, sizeof hostname) == 0) {
-        printf ("+++++++%s++++++++\n", hostname);
-    }
-    else {
+    if (gethostname (hostname, sizeof hostname) != 0) {
         filename = "404";
         return filename;
     }
+    printf ("+++++++%s++++++++\n", hostname);
 
-    http = (char *)malloc(10);
     token = strtok(buff, "\r\n"); /* get the first token: */
+    sscanf (token, "%s %s %s", get, filename, http);
 
-    while (token) {
-        sscanf (token, "%s %s %s", get, filename, http);
-        if ( (strlen(get) == 3) && (get[0] == 'G') && (get[1] == 'E') && (get[2] == 'T') ) {
-            strcpy (filename, &filename[1]);
-            isGETFound = 1;
-            break;
-        }
-        else {
-            token = strtok (NULL, "\r\n");
-        }
+    if ( (strlen(get) == 3) && (get[0] == 'G') && (get[1] == 'E') && (get[2] == 'T') ) {
+        strcpy (filename, &filename[1]);
+        printf("filename to be returned by parser function: %s\n", filename);        
+        return filename;
     }
-    if (isGETFound == 0) {
-        strcpy (filename,"404");
-    }
-    printf("filename to be returned by parser function: %s\n", filename);
-    free (http);
-    return filename;
+
+    return "404";
 }
+
+
 
 int main() {
 
-    int sock, clientsock, listens;
+    int sock, clientsock, listens, newlen;
     char buff[MAXLEN] = {0};
-    char *p; // pointer to the buffer that contains the http request
-    char *filerequest;  // pointer to the filename requested
+    char *buff_p, *response_p;
     struct sockaddr_in addr;
     struct sockaddr_in cliaddr;
     socklen_t cliaddrlen;
 
-    p = buff;
+    buff_p = buff;
     FILE *fp;
 
     // create a TCP socket
@@ -235,21 +210,14 @@ int main() {
     cliaddrlen = sizeof(cliaddr);
 
     while(1) {
-    // read():
-        int c;
-        char data[MAXLEN];
-        int newlen;
+        // char response_buff[MAXLEN];
 
         // accepts the connection, returns new file descriptor for the connection and cliaddr
         if ( (clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen)) == -1) {
-            printf ("error: connection refused\n");
+            perror ("Error on ACCEPT\n");
         }
-        else {
-            printf ("Connected\n");
-        }
-
         if ( (recv(clientsock, buff, MAXLEN, 0)) == -1) {
-            printf ("error: connection wasn't received\n");
+            perror ("Error on RECV\n");
         }   
 
         printf ("\n****************print the request:******************\n");
@@ -258,30 +226,25 @@ int main() {
             printf ("%c", buff[j]);
             j++;
         }
-
-        filerequest = request_parser (p);
-        printf ("result from parsing: %s\n", filerequest);
         
-        char *p1;
-        p1 = responseGenerator(filerequest);
-        strcpy (data, p1);
-        newlen = strlen(p1);
-
+        response_p = response_generator (request_parser (buff_p));
+        // strcpy (response_buff, response_p);
+        newlen = strlen (response_p);
+/*
         // check what is going to be sent:
         int i;
         for (i = 0; i<newlen; i++) {
-            printf ("%c", data[i]);
+            printf ("%c", response_buff[i]);
         }
-
-        write (clientsock, p1, newlen);
+*/
+        write (clientsock, response_p, newlen);
         printf("Sending1...\n");
-        break; // this commented out enables multiple requests?
     }
 
     close(clientsock);
-
     close(sock);
-    return (0);
+    return 0;
 }
+
 
 
