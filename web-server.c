@@ -22,10 +22,10 @@
 
 /* find the content type of the file requested */
 char *find_content_type (char *filename) {
+
     char *p;  // pointer to the type found
     p = (char *) malloc(30*sizeof(char));
     
-    /* find the type: */
     if ( strstr(filename, ".html") != NULL || strstr(filename, ".hml") != NULL ) {
         strcpy (p, "Content-Type: text/html \r\n");
     }
@@ -41,21 +41,38 @@ char *find_content_type (char *filename) {
     else {
         strcpy (p, "Content-Type: application/octet-stream \r\n");
     }
-    //return "Content-type: image/jpeg\r\n";
+
     return p;
 }
 
+void respond_400 (int conn_fd) {
+    char buff [300];
+    strcpy (buff, "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat (buff, "<!DOCTYPE html><html><head><title>400 Bad Request </title></head>");
+    strcat (buff, "<body> <h1>400 Bad Request</h1><p>Something wrong with your request</p></body></html>");
+    write (conn_fd, buff, strlen(buff));
+    close (conn_fd);
+}
 
+void respond_404 (int conn_fd) {
+    char buff [300];
+    strcpy (buff, "HTTP/1.1 404 File Not Found\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat (buff, "<!DOCTYPE html><html><head><title>404 File Not Found</title></head>");
+    strcat (buff, "<body> <h1>404 File Not Found</h1><p>The file requested doesn't exist.</p></body></html>");
+    write (conn_fd, buff, strlen(buff));
+    close (conn_fd);
+}
 
-/*  
-formates the response 
-either of these depeding on the index value: 
-    HTTP/1.1 404 Not Found + content type + connection + 404 file made by me
-    HTTP/1.1 200 OK + content type + connection header + the file wanted
-    HTTP/1.1 400 Bad Request + content type + connection + 400 file made by me
-    HTTP/1.1 500 Internal Server Error + content type + connection + 500 file made by me
-*/
-void response_generator (int conn_fd, char *filename) {
+void respond_500 (int conn_fd) {
+    char buff [300];
+    strcpy (buff, "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat (buff, "<!DOCTYPE html><html><head><title>500 Internal Server Error</title></head>");
+    strcat (buff, "<body> <h1>500 Internal Server Error</h1></body></html>");
+    write (conn_fd, buff, strlen(buff));
+    close (conn_fd);
+}
+
+int response_generator (int conn_fd, char *filename) {
 
     /* vars needed for finding the length of the file */
     struct stat filestat;
@@ -65,78 +82,50 @@ void response_generator (int conn_fd, char *filename) {
     char file_buff [MAXLEN];
     char filesize[7];//, name[30]; 
 
-    //strcpy (name, filename);
-    //printf ("*********2******filename: %s\n", filename);
     if ( ((fd = open (filename, O_RDONLY)) < -1) || (fstat(fd, &filestat) < 0) ) {
         printf ("Error in measuring the size of the file");
-    }
-/*
-    else {
-        printf ("*********3******filename: %s %s\n", filename, name);
-        char data[filestat.st_size + 150], data2[filestat.st_size + 40], data3[filestat.st_size];
-    }
-*/
-    //printf ("*********4******filename: %s\n", filename);
-    if (filename == NULL) {
-        // I have measured the length of my 400.html file
-        strcpy (header_buff, "HTTP/1.1 400 Bad Request\r\nContent-Length: 327\r\nContent-Type: text/html\r\n");
-        fp = fopen ("400index.html", "r");
+        respond_404 (conn_fd);
     }
 
-    printf ("filename: %s\n", filename);
-    sprintf (filesize, "%zd", filestat.st_size); // put the file size of buffer, so we can add it to the response header
-    printf ("size of file: %s\n", filesize);
+    if (filename == NULL) {
+        respond_400 (conn_fd);
+        return 1;
+    }
 
     fp = fopen (filename, "r");
     if (fp == NULL) {
-	printf ("fp is null or filename = 404\n");
-        // I have measured the length of my 404.html file
-        strcpy (header_buff, "HTTP/1.1 404 Not Found\r\nContent-Length: 165\r\nContent-Type: text/html\r\n");
-        fp = fopen ("404index.html", "r");
+	    respond_404 (conn_fd);
+        return 2;
     }
 
     else if (fp != NULL) {
+
+        sprintf (filesize, "%zd", filestat.st_size); // put the file size of buffer, so we can add it to the response header
         strcpy (header_buff, "HTTP/1.1 200 OK\r\nContent-Length: ");
+
         /* content-length: */
         strcat (header_buff, filesize);
         strcat (header_buff, "\r\n");
+
         /* content-type: */
         strcat (header_buff, find_content_type (filename));
-        printf ("%s\n", find_content_type (filename));
+        strcat (header_buff, "Connection: keep-alive\r\n\r\n");
+        write (conn_fd, header_buff, strlen(header_buff));
+
+        fread (file_buff, sizeof(char), filestat.st_size + 1, fp);
+        write (conn_fd, file_buff, filestat.st_size);
     }
 
     else {
         // I have measured the length of my 500.html file
-        strcpy (header_buff, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 190\r\nContent-Type: text/html\r\n");
-        fp = fopen ("500index.html", "r");
-    }
-        
+        respond_500 (conn_fd);
+        return -1;
+    }        
 
-    strcat (header_buff, "Connection: keep-alive\r\n\r\n");
-    printf ("\n****************print the request:******************\n");
-    int i = 0;
-    while (header_buff [i]) {
-        printf ("%c", header_buff[i]);
-        i ++;
-    }
-
-    write (conn_fd, header_buff, strlen(header_buff));
-    fread (file_buff, sizeof(char), filestat.st_size + 1, fp);
-    fclose(fp);
-
-    printf ("\n****************print the request:******************\n");
-    i = 0;
-    /* read the file in a data buffer: */
-/*
-    while (i < filestat.st_size ) {
-        printf ("%c", file_buff [i]);
-        i ++;
-    }
-*/
-    write (conn_fd, file_buff, filestat.st_size);
+    fclose (fp);
     close (conn_fd);
+    return 0;
 }
-
 
 
 /* returns the name of the file requested by the browser: */
