@@ -239,48 +239,18 @@ int main() {
     }
  
     cliaddrlen = sizeof(cliaddr);
-/*
-    pthread *thread = malloc (sizeof (pthread_t)*connNumb); // pointer to the thread pool
 
-    // create threads in the thread pool:
-    int i;
-    for (i = 0; i < connNumb; i++) {
-        int ret = -1;
-        ret = pthread_create (&thread[i], NULL, request_parser, NULL);
-        if (ret != 0) {
-            printf ("error occured while creating thread.\n");
-            exit (1);
-        }
-    }
-*/
     while(1) {
         // accepts the connection, returns new file descriptor for the connection and cliaddr
         if ( (clientsock = accept(sock, (struct sockaddr*)&cliaddr, &cliaddrlen)) == -1) {
             perror ("Error on ACCEPT\n");
         }   
-        // start a new thread to process the network connection accepted:
         request_parser (clientsock);
-        
-
-/*
-        if (pthread_create (&t1, NULL, request_parser, (void *)&clientsock)) {
-            fprintf(stderr, "Error creating thread 1\n");
-            return 1;
-        }
-
-        if (pthread_create (&t2, NULL, request_parser, (void *)&clientsock)) {
-            fprintf(stderr, "Error creating thread 2\n");
-            return 1;
-        }
-*/
-    //    pthread_join(t1, NULL); /* wait for thread 1 to finish */
-       // pthread_join(t2, NULL); /* wait for thread 1 to finish */
         printf ("Sending ...\n");
 
     }
     close (sock);
     return 0;
 }
-
 
 
