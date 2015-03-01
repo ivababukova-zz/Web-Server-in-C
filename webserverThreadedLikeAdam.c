@@ -38,7 +38,7 @@ void respond_404 (int conn_fd) {
     strcpy(buf," text/html\r\nConnection: keep-alive\r\n\r\n") ;
     strcat(buf,"<!DOCTYPE html><html><head><title>404</title></head>");
     strcat(buf,"<body><h1>404 File Not Found</h1></body></html>");
-    write(conn_fd, buff, strlen(buf));
+    write(conn_fd, buf, strlen(buf));
     close(conn_fd);
 }
 
