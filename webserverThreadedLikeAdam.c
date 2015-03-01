@@ -23,30 +23,33 @@
 #define HUGE 1000000
 
 void respond_400 (int conn_fd) {
-    char buff [300];
-    strcpy (buff, "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
-    strcat (buff, "<!DOCTYPE html><html><head><title>400 Bad Request </title></head>");
-    strcat (buff, "<body> <h1>400 Bad Request</h1><p>Something wrong with your request</p></body></html>");
-    write (conn_fd, buff, strlen(buff));
-    close (conn_fd);
+    char buf [300];
+    strcpy(buf,"HTTP/1.1 400 Bad Request\r\nContent-Type:");
+    strcpy(buf," text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat(buf,"<!DOCTYPE html><html><head><title>Bad Request</title></head>");
+    strcat(buf,"<body> <h1>400 Bad Request</h1></body></html>");
+    write(conn_fd, buf, strlen(buf));
+    close(conn_fd);
 }
 
 void respond_404 (int conn_fd) {
-    char buff [300];
-    strcpy (buff, "HTTP/1.1 404 File Not Found\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
-    strcat (buff, "<!DOCTYPE html><html><head><title>404 File Not Found</title></head>");
-    strcat (buff, "<body> <h1>404 File Not Found</h1><p>The file requested doesn't exist.</p></body></html>");
-    write (conn_fd, buff, strlen(buff));
-    close (conn_fd);
+    char buf [300];
+    strcpy(buf,"HTTP/1.1 404 File Not Found\r\nContent-Type:");
+    strcpy(buf," text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat(buf,"<!DOCTYPE html><html><head><title>404</title></head>");
+    strcat(buf,"<body><h1>404 File Not Found</h1></body></html>");
+    write(conn_fd, buff, strlen(buf));
+    close(conn_fd);
 }
 
 void respond_500 (int conn_fd) {
     char buff [300];
-    strcpy (buff, "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\nConnection: keep-alive\r\n\r\n") ;
-    strcat (buff, "<!DOCTYPE html><html><head><title>500 Internal Server Error</title></head>");
-    strcat (buff, "<body> <h1>500 Internal Server Error</h1></body></html>");
-    write (conn_fd, buff, strlen(buff));
-    close (conn_fd);
+    strcpy(buff,"HTTP/1.1 500 Internal Server Error\r\nContent-Type:");
+    strcpy(buff," text/html\r\nConnection: keep-alive\r\n\r\n") ;
+    strcat(buff,"<!DOCTYPE html><html><head><title>500</title></head>");
+    strcat(buff,"<body> <h1>500 Internal Server Error</h1></body></html>");
+    write(conn_fd, buff, strlen(buff));
+    close(conn_fd);
 }
 
 // allocate @length memory
@@ -58,8 +61,10 @@ char* newstr(int length){
    }
    return new_memory;
 }
-
-bool write_message (const char *message, int message_length, int file_descriptor, int repeat_if_error) {
+bool write_message (const char *message,
+                    int message_length,
+                    int file_descriptor,
+                    int repeat_if_error) {
     if(repeat_if_error <= 0){
         return false;
     }
@@ -67,10 +72,9 @@ bool write_message (const char *message, int message_length, int file_descriptor
     while(total_written < message_length) {
         //usleep(1000);
         ssize_t written_this_round = write (file_descriptor,
-                                            (const char *) &message[total_written],
-                                            sizeof(char) * (message_length - total_written)
-                                            //sizeof(char) * (1)
-                                            );
+                        (const char *) &message[total_written],
+                         sizeof(char) * (message_length - total_written)
+                               );
         if (written_this_round != -1) {
             total_written += written_this_round;        
         }
@@ -95,7 +99,7 @@ int response_generator (int conn_fd, char *filename) {
     char* file_buff = newstr(HUGE);
     char filesize[7];//, name[30]; 
 
-    if ( ( (fd = open (filename, O_RDONLY)) < -1) || (fstat(fd, &filestat) < 0) ) {
+    if(((fd=open(filename, O_RDONLY))<-1) || (fstat(fd, &filestat) < 0)) {
         printf ("Error in measuring the size of the file.\n");
         respond_404 (conn_fd);
     }
@@ -112,7 +116,8 @@ int response_generator (int conn_fd, char *filename) {
     }
 
     else if (fp != NULL) {
-        sprintf (filesize, "%zd", filestat.st_size); // put the file size to buffer
+        // put the file size to buffer
+        sprintf (filesize, "%zd", filestat.st_size);
         strcpy (header_buff, "HTTP/1.1 200 OK\r\nContent-Length: ");
 
         /* write the content-length: */
@@ -120,20 +125,21 @@ int response_generator (int conn_fd, char *filename) {
         strcat (header_buff, "\r\n");
 
         /* find the content-type: */
-        if (strstr (filename, ".html") != NULL || strstr(filename, ".hml") != NULL ) {
-            strcat (header_buff, "Content-Type: text/html \r\n");
+        if(strstr(filename, ".html")!=NULL||strstr(filename, ".hml")!= NULL){
+            strcat (header_buff, "Content-Type: text/html\r\n");
         }
         else if (strstr (filename, ".txt") != NULL ) {
-            strcat (header_buff, "Content-Type: text/plain \r\n");
+            strcat (header_buff, "Content-Type: text/plain\r\n");
         }
-        else if (strstr (filename, ".jpg") != NULL  || strstr(filename, ".jpeg") != NULL ) {
-            strcat (header_buff, "Content-Type: image/jpeg \r\n");
+        else if(strstr(filename,".jpg")!= NULL||strstr(filename,".jpeg")!=NULL)
+        {
+            strcat (header_buff, "Content-Type: image/jpeg\r\n");
         }
         else if (strstr (filename, ".gif") != NULL ) {
-            strcat (header_buff, "Content-Type: image/gif \r\n");
+            strcat (header_buff, "Content-Type: image/gif\r\n");
         } 
         else {
-            strcat (header_buff, "Content-Type: application/octet-stream \r\n");
+            strcat(header_buff,"Content-Type: application/octet-stream\r\n");
         }
         
         strcat (header_buff, "Connection: keep-alive\r\n\r\n");
@@ -159,7 +165,8 @@ int response_generator (int conn_fd, char *filename) {
 int checkHostName (char *hostname, char *hostname_req, char *buff) {
     char *host = strcasestr (buff, "host: ");
     if (host == NULL) {
-        return -1; // TODO check what error to return if there is missing host header
+        // TODO check what error to return if there is missing host header
+        return -1;
     }
 
     else {
@@ -168,7 +175,7 @@ int checkHostName (char *hostname, char *hostname_req, char *buff) {
         char *stripped_host = strstr (start_host, "\r\n");
         memcpy(hostname_req, start_host, stripped_host - start_host);  
         if (strcmp (hostname_req, hostname) != 0) {
-            strcat (hostname, ":5000"); // check whether this hostname is used instead
+            strcat (hostname, ":5000");//check whether this hostname is used
             if (strcmp (hostname_req, hostname) != 0) {
                 return -1;
             }
@@ -279,7 +286,7 @@ int main() {
     if (bind (sock, (struct sockaddr *) &addr, sizeof(addr) ) == -1 ) {
         return 7;
     }
-    // listen for and accept connections from browsers, max 20 connections can wait
+    // listen for and accept connections from browsers
     if ( (listens = listen (sock, connNumb)) == -1) {
         return -1;
     }
